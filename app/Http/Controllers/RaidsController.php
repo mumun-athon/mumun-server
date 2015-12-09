@@ -37,11 +37,23 @@ class RaidsController extends Controller
     /**
      * Get raids belongs to logged user.
      *
+     * @param Request $request
      * @return json
      */
-    public function index()
+    public function index(Request $request)
     {
-        $raids = Auth::user()->raids()->withLocations()->latest()->get();
+        $raids = Auth::user()
+            ->raids()
+            ->withLocations();
+
+        if ($request->has('show_date'))
+        {
+            $date = Carbon::parse($request->input('show_date'));
+            $raids->where('start_date', '<=', $date->format('Y-m-d'))
+                ->where('end_date', '>=', $date->format('Y-m-d'));
+        }
+
+        $raids = $raids->latest()->get();
 
         return $raids ? $raids : [];
     }
@@ -71,6 +83,9 @@ class RaidsController extends Controller
 
         $latitude = mysqli_real_escape_string($con, $request->input('latitude'));
         $longitude = mysqli_real_escape_string($con, $request->input('longitude'));
+
+        mysqli_close($con);
+
         $distance = RaidLocation::getDistanceInMiles();
 
         $query = "SELECT
@@ -86,30 +101,12 @@ class RaidsController extends Controller
                   FROM raid_locations
                   HAVING distance < $distance
                   ";
-        $result = mysqli_query($con, $query);
-        $data = [];
+        $queryResult = collect(\DB::select( \DB::raw($query) ));
 
-        while($row = mysqli_fetch_array($result, MYSQLI_ASSOC))
+        if ($queryResult->count())
         {
-            $data[] = $row;
+            return ['status' => 'found', 'legal' => true, 'raid' => $queryResult->first()];
         }
-
-        $data = collect($data);
-
-       if ($data->count()) 
-       {
-           $status = 'found';
-           $legal = true;
-
-           $raid = $activeRaids->filter(function($raid) use ($data) {
-               $dataRaid = $data->first();
-               return $raid->id == $dataRaid['raid_id'];
-           })->first();
-       }
-
-        mysqli_close($con);
-
-       return ['status' => $status, 'legal' => $legal, 'raid' => $raid];
     }
 
     /**

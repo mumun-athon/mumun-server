@@ -4,6 +4,7 @@ use Illuminate\Foundation\Testing\WithoutMiddleware;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 
+use Carbon\Carbon;
 use App\IlegalReport;
 
 class IlegalReportTest extends TestCase
@@ -26,6 +27,20 @@ class IlegalReportTest extends TestCase
 
         $this->seeJsonContains(['id' => "{$report->id}"]);
         $this->assertCount($limit, $this->getContentCollect()->toArray());
+    }
+
+    public function testGetReportSpecifiedDate()
+    {
+        $report = $this->createReport();
+        $user = $this->loginAsDummyUser();
+        $headers = $this->generateHeaders($user);
+
+        $this->get("/ilegal-reports?show_date=" . Carbon::now()->format('Y-m-d'), $headers);
+        $this->seeJsonContains([
+            'name' => $report->name,
+            'ktp' => $report->ktp,
+            'description' => $report->description,
+        ]);
     }
 
     /**
@@ -59,7 +74,7 @@ class IlegalReportTest extends TestCase
         $file = [];
 
         // Set photo
-        $file['photo'] = fopen( public_path('images/ilegalreports/unknown.jpg'), "r" );
+        // $file['photo'] = fopen( public_path('images/ilegalreports/unknown.jpg'), "r" );
         unset($input['photo']);
 
         $this->post('/ilegal-reports', $input);
@@ -82,7 +97,7 @@ class IlegalReportTest extends TestCase
         $file = [];
 
         // Set photo
-        $file['photo'] = fopen( public_path('images/ilegalreports/unknown.jpg'), "r" );
+        // $file['photo'] = fopen( public_path('images/ilegalreports/unknown.jpg'), "r" );
         unset($input['photo']);
 
         $this->put("ilegal-reports/{$report->id}", $input, $headers);
@@ -110,9 +125,9 @@ class IlegalReportTest extends TestCase
         $this->seeJsonContains(['error' => false]);
     }
 
-    private function createReport()
+    private function createReport($data = [])
     {
-        return factory(IlegalReport::class)->create();
+        return factory(IlegalReport::class)->create($data);
     }
 
 }

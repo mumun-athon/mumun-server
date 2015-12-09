@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
+use Carbon\Carbon;
 use App\Http\Requests\IlegalReportRequest;
 use App\Http\Controllers\Controller;
 use App\IlegalReport;
@@ -40,7 +41,18 @@ class IlegalReportsController extends Controller
 
         if ($request->has('limit')) $limit = $request->input('limit');
 
-        return $this->ilegalReport->take($limit)->latest()->get();
+        $reports = $this->ilegalReport->take($limit);
+
+        if ($request->has('show_date'))
+        {
+            $date = Carbon::parse($request->input('show_date'));
+            $reports->where('created_at', '>=', $date->format('Y-m-d H:i:s'))
+                ->where('created_at', '<', $date->addDay(1)->format('Y-m-d H:i:s'));
+        }
+
+        $reports = $reports->latest()->get();
+
+        return $reports;
     }
 
     /**

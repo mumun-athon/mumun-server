@@ -13,6 +13,34 @@ class RaidTest extends TestCase
     use DatabaseTransactions;
 
     /**
+     * A test get raids data that active.
+     */
+    public function testRaidGetDateNow()
+    {
+        $user = $this->loginAsDummyUser();
+        $headers = $this->generateHeaders($user);
+
+        $this->get('/raids?show_date=' . Carbon::now()->format('Y-m-d'), $headers);
+        $this->seeJsonContains([]);
+
+        // Create raids that now
+        $newRaid = $this->createRaid($user, [
+            'doc_number' => 'XXXXVVVV',
+            'start_date' => Carbon::now()->format('Y-m-d'),
+            'end_date' => Carbon::now()->addDay(2)->format('Y-m-d'),
+            'description' => 'Raid in this day'
+        ]);
+
+        $this->get('/raids?show_date=' . Carbon::now()->format('Y-m-d'), $headers);
+        $this->seeJsonContains([
+            'doc_number' => 'XXXXVVVV',
+            'start_date' => Carbon::now()->format('Y-m-d'),
+            'end_date' => Carbon::now()->addDay(2)->format('Y-m-d'),
+            'description' => 'Raid in this day'
+        ]);
+    }
+
+    /**
      * A test create raid via api.
      *
      * @return void
@@ -34,6 +62,7 @@ class RaidTest extends TestCase
 
         $this->post('/raids', $input, $headers);
         $this->seeJsonContains($dummyRaid->toArray());
+        $this->seeInDatabase('raids', ['doc_number' => $dummyRaid->doc_number]);
     }
 
     /**
@@ -44,14 +73,23 @@ class RaidTest extends TestCase
     public function testRaidCheckLocation()
     {
         $user = $this->loginAsDummyUser();
+        $docNumber = '12121XXXX';
 
         // Create new raid and raid location in Pondok Programmer
-        $newRaid = $this->createRaid($user);
+        $newRaid = $this->createRaid($user, [
+            'doc_number' => $docNumber,
+            'start_date' => Carbon::now()->format('Y-m-d'),
+            'end_date' => Carbon::now()->addDay(2)->format('Y-m-d'),
+            'description' => 'Raid in this day'
+        ]);
+
         $dummyLocation = factory(RaidLocation::class)->make([
             'latitude' => -7.845046,
             'longitude' => 110.402123
         ]);
+
         $newRaid->locations()->save($dummyLocation);
+        $this->seeInDatabase('raids', ['doc_number' => $docNumber]);
 
         // Coordinates satuempat.com (near of Pondok Programmer)
         $latitude = -7.845072;
@@ -83,9 +121,9 @@ class RaidTest extends TestCase
         $this->seeJsonContains(['end_date' => $newRaid->end_date]);
     }
 
-    protected function createRaid($user)
+    protected function createRaid($user, $data = [])
     {
-        $dummyRaid = factory(Raid::class)->make();
+        $dummyRaid = factory(Raid::class)->make($data);
         $newRaid = $user->raids()->save($dummyRaid);
 
         return $newRaid;

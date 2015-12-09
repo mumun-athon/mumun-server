@@ -1,0 +1,11 @@
+/vendor
+/node_modules
+Homestead.yaml
+Homestead.json
+.env
+/public/images/ilegalreports/*.jpg
+/public/images/ilegalreports/*.png
+/public/images/ilegalreports/*.gif
+/public/images/ilegalreports/*.JPG
+/public/images/ilegalreports/*.PNG
+/public/images/ilegalreports/*.GIF
